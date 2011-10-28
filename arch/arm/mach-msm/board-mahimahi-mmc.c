@@ -190,13 +190,39 @@ static uint32_t mahimahi_sdslot_switchvdd(struct device *dev, unsigned int vdd)
         return 0;
 }
 
+static uint32_t mahimahi_cdma_sdslot_switchvdd(struct device *dev, unsigned int vdd)
+{
+        if (!vdd == !sdslot_vdd)
+                return 0;
 
-static unsigned int mahimahi_sd_status;
+        /* In CDMA version, the vdd of sdslot is not configurable, and it is
+ *          * fixed in 2.85V by hardware design.
+ *                   */
+
+        sdslot_vdd = vdd ? MMC_VDD_28_29 : 0;
+
+        if (vdd) {
+                gpio_set_value(MAHIMAHI_CDMA_SD_2V85_EN, 1);
+                config_gpio_table(sdcard_on_gpio_table,
+                                  ARRAY_SIZE(sdcard_on_gpio_table));
+        } else {
+                config_gpio_table(sdcard_off_gpio_table,
+                                  ARRAY_SIZE(sdcard_off_gpio_table));
+                gpio_set_value(MAHIMAHI_CDMA_SD_2V85_EN, 0);
+        }
+
+        sdslot_vreg_enabled = !!vdd;
+
+        return 0;
+}
+
+
+//static unsigned int mahimahi_sd_status;
 
 static void (*sdslot_status_cb)(int card_present, void *dev_id);
 static void *sdslot_status_cb_devid;
 
-static int microp_check_status(int *st)
+/*static int microp_check_status(int *st)
 {
 	mahimahi_sd_status = !((unsigned) *st);
 
@@ -204,7 +230,7 @@ static int microp_check_status(int *st)
 		sdslot_status_cb(mahimahi_sd_status, sdslot_status_cb_devid);
 
 	return 0;
-}
+}*/
 
 bool mahimahi_sd_gpio(void)
 {
@@ -366,7 +392,7 @@ int mahimahi_wifi_reset(int on)
 int __init mahimahi_init_mmc(unsigned int sys_rev)
 {
 	uint32_t id;
-	struct cnf_driver *microp_sdcard_detect;
+	//struct cnf_driver *microp_sdcard_detect;
 
 	wifi_status_cb = NULL;
 
@@ -384,7 +410,7 @@ int __init mahimahi_init_mmc(unsigned int sys_rev)
 		goto done;
 	}*/
 
-	sdslot_vreg_enabled = 0;
+	/*sdslot_vreg_enabled = 0;
 
 	sdslot_vreg = vreg_get(0, "gp6");
 	if (IS_ERR(sdslot_vreg))
@@ -410,7 +436,41 @@ int __init mahimahi_init_mmc(unsigned int sys_rev)
 		cnf_driver_register(microp_sdcard_detect);
 
 		msm_add_sdcc(2, &mahimahi_sdslot_data, 0, 0);
-	}
+	}*/
+        if (opt_disable_sdcard) {
+                pr_info("%s: sdcard disabled on cmdline\n", __func__);
+                goto done;
+        }
+
+        sdslot_vreg_enabled = 0;
+
+        if (is_cdma_version(sys_rev)) {
+                /* In the CDMA version, sdslot is supplied by a gpio. */
+                int rc = gpio_request(MAHIMAHI_CDMA_SD_2V85_EN, "sdslot_en");
+                if (rc < 0) {
+                        pr_err("%s: gpio_request(%d) failed: %d\n", __func__,
+                                MAHIMAHI_CDMA_SD_2V85_EN, rc);
+                        return rc;
+                }
+                mahimahi_sdslot_data.translate_vdd = mahimahi_cdma_sdslot_switchvdd;
+        } else {
+                /* in UMTS version, sdslot is supplied by pmic */
+                sdslot_vreg = vreg_get(0, "gp6");
+                if (IS_ERR(sdslot_vreg))
+                        return PTR_ERR(sdslot_vreg);
+        }
+
+        if (system_rev > 0)
+                msm_add_sdcc(2, &mahimahi_sdslot_data, 0, 0);
+        else {
+                mahimahi_sdslot_data.status = mahimahi_sdslot_status;
+                mahimahi_sdslot_data.register_status_notify = NULL;
+                set_irq_wake(MSM_GPIO_TO_INT(MAHIMAHI_GPIO_SDMC_CD_REV0_N), 1);
+                msm_add_sdcc(2, &mahimahi_sdslot_data,
+                             MSM_GPIO_TO_INT(MAHIMAHI_GPIO_SDMC_CD_REV0_N),
+                             IORESOURCE_IRQ_LOWEDGE | IORESOURCE_IRQ_HIGHEDGE);
+        }
+
 
 done:
 	printk(KERN_INFO "%s()-\n", __func__);

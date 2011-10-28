@@ -1,8 +1,8 @@
-/* This file is auto generated, version 150 */
+/* This file is auto generated, version 165 */
 /*  PREEMPT */
 #define UTS_MACHINE "arm"
-#define UTS_VERSION "#150 PREEMPT Wed Oct 26 12:18:52 CEST 2011"
-#define LINUX_COMPILE_TIME "12:18:52"
+#define UTS_VERSION "#165 PREEMPT Fri Oct 28 12:13:25 CEST 2011"
+#define LINUX_COMPILE_TIME "12:13:25"
 #define LINUX_COMPILE_BY "dbasabe"
 #define LINUX_COMPILE_HOST "dbp.cti.csic.es"
 #define LINUX_COMPILE_DOMAIN "cti.csic.es"
