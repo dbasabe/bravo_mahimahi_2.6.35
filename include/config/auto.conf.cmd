@@ -371,7 +371,9 @@ deps_config := \
 	drivers/net/wimax/i2400m/Kconfig \
 	drivers/net/wimax/Kconfig \
 	drivers/net/wireless/bcm4330/Kconfig \
-	drivers/net/wireless/bcm4329/Kconfig \
+	drivers/net/wireless/bcm4329_CES/Kconfig \
+	drivers/net/wireless/bcm4329_248/Kconfig \
+	drivers/net/wireless/bcm4329_204/Kconfig \
 	drivers/net/wireless/zd1211rw/Kconfig \
 	drivers/net/wireless/wl12xx/Kconfig \
 	drivers/net/wireless/rt2x00/Kconfig \
